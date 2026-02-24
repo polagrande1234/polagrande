@@ -253,8 +253,53 @@ class PollagrandeApp {
         if (!consultation) return;
         
         this.currentEditId = id;
+        
+        // 특이사항에서 옵션과 협력업체 파싱
+        const memo = consultation['특이사항'] || '';
+        const optionMatch = memo.match(/옵션: ([^|]+)/);
+        const partnerMatch = memo.match(/협력업체: ([^|]+)/);
+        
+        // 옵션 파싱
         this.selectedOptions = [];
+        if (optionMatch && optionMatch[1] !== '없음') {
+            const optionsText = optionMatch[1].trim();
+            optionsText.split(',').forEach(opt => {
+                const trimmed = opt.trim();
+                if (trimmed) {
+                    // 기타옵션 체크
+                    if (!Object.keys(CONFIG.OPTIONS).some(key => trimmed.includes(key))) {
+                        const priceMatch = trimmed.match(/\(₩([\d,]+)\)/);
+                        if (priceMatch) {
+                            const price = parseInt(priceMatch[1].replace(/,/g, ''));
+                            this.selectedOptions.push({ type: '기타옵션', customPrice: price });
+                        }
+                    } else {
+                        const optionName = Object.keys(CONFIG.OPTIONS).find(key => trimmed.includes(key));
+                        if (optionName) {
+                            this.selectedOptions.push({ type: optionName });
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 협력업체 파싱
         this.selectedPartners = [];
+        if (partnerMatch && partnerMatch[1] !== '없음') {
+            const partnersText = partnerMatch[1].trim();
+            partnersText.split('/').forEach(p => {
+                const trimmed = p.trim();
+                if (trimmed) {
+                    const parts = trimmed.split(':');
+                    if (parts.length >= 2) {
+                        this.selectedPartners.push({
+                            name: parts[0].trim(),
+                            detail: parts.slice(1).join(':').trim()
+                        });
+                    }
+                }
+            });
+        }
         
         document.getElementById('customerName').value = consultation['고객명'];
         document.getElementById('customerPhone').value = consultation['연락처'];
@@ -273,10 +318,46 @@ class PollagrandeApp {
         document.getElementById('contractStatus').value = consultation['계약상태'];
         document.getElementById('depositAmount').value = consultation['계약금'] || 0;
         document.getElementById('paymentMethod').value = consultation['지급방식'] || '현금';
-        document.getElementById('consultMemo').value = consultation['특이사항'] || '';
+        
+        // 메모에서 실제 특이사항만 추출
+        let actualMemo = memo;
+        if (memo.includes('|')) {
+            const parts = memo.split('|');
+            actualMemo = parts[parts.length - 1].trim();
+        }
+        document.getElementById('consultMemo').value = actualMemo;
         
         this.renderOptionsCheckboxes();
         this.renderPartnersCheckboxes();
+        
+        // 저장된 옵션 체크 복원
+        this.selectedOptions.forEach(opt => {
+            if (opt.type === '기타옵션') {
+                const checkbox = document.getElementById('opt_기타옵션');
+                if (checkbox) {
+                    checkbox.checked = true;
+                    document.getElementById('customOptionInput').style.display = 'block';
+                    document.getElementById('customOptionPrice').value = opt.customPrice;
+                }
+            } else {
+                const checkbox = document.getElementById(`opt_${opt.type}`);
+                if (checkbox) checkbox.checked = true;
+            }
+        });
+        
+        // 저장된 협력업체 체크 복원
+        this.selectedPartners.forEach(partner => {
+            const checkbox = document.getElementById(`partner_${partner.name}`);
+            if (checkbox) {
+                checkbox.checked = true;
+                const detailInput = document.getElementById(`partner_detail_${partner.name}`);
+                if (detailInput) {
+                    detailInput.style.display = 'block';
+                    detailInput.value = partner.detail;
+                }
+            }
+        });
+        
         this.updatePriceCalculation();
         
         const modal = new bootstrap.Modal(document.getElementById('consultModal'));
