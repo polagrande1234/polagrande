@@ -14,11 +14,27 @@ class PricingCalculator {
         return this.basePrice;
     }
     
-    // 추가 식대 계산
-    calculateMealPrice(guestCount, mealType, baseGuests = 0) {
-        const additionalGuests = Math.max(0, guestCount - baseGuests);
-        const pricePerPerson = CONFIG.MEAL_PRICES[mealType] || 0;
-        this.mealPrice = additionalGuests * pricePerPerson;
+    // 웨딩 추가 식대 계산 (25인부터 추가)
+    calculateWeddingMealPrice(guestCount) {
+        if (guestCount <= 24) {
+            this.mealPrice = 0;
+        } else {
+            const additionalGuests = guestCount - 24;
+            this.mealPrice = additionalGuests * 55000;
+        }
+        return this.mealPrice;
+    }
+    
+    // 행사 식대 계산
+    calculateEventMealPrice(guestCount, mealType, customPrice = 0) {
+        if (customPrice > 0) {
+            // 기업행사/대관 - 직접입력
+            this.mealPrice = guestCount * customPrice;
+        } else {
+            // 돌잔치/가족행사 - 양식/한식
+            const pricePerPerson = CONFIG.MEAL_PRICES[mealType] || 0;
+            this.mealPrice = guestCount * pricePerPerson;
+        }
         return this.mealPrice;
     }
     
@@ -26,7 +42,11 @@ class PricingCalculator {
     calculateOptionPrice(selectedOptions) {
         this.optionPrice = 0;
         selectedOptions.forEach(option => {
-            this.optionPrice += CONFIG.OPTIONS[option] || 0;
+            if (option.type === '기타옵션' && option.customPrice) {
+                this.optionPrice += option.customPrice;
+            } else {
+                this.optionPrice += CONFIG.OPTIONS[option.type] || 0;
+            }
         });
         return this.optionPrice;
     }

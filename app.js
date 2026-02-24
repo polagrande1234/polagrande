@@ -5,6 +5,8 @@ class PollagrandeApp {
         this.consultations = [];
         this.calendar = null;
         this.currentEditId = null;
+        this.selectedOptions = [];
+        this.selectedPartners = [];
     }
     
     // 초기화
@@ -55,7 +57,7 @@ class PollagrandeApp {
     // 캘린더 이벤트 데이터 생성
     getCalendarEvents() {
         return this.consultations.map(c => {
-            let color = '#ffc107'; // 기본상담
+            let color = '#ffc107';
             if (c['계약상태'] === '방문상담') color = '#17a2b8';
             if (c['계약상태'] === '확정') color = '#dc3545';
             
@@ -78,17 +80,6 @@ class PollagrandeApp {
         document.getElementById('hopeCount').textContent = hopeCount;
         document.getElementById('visitCount').textContent = visitCount;
         document.getElementById('confirmedCount').textContent = confirmedCount;
-        
-        // 월별 매출 계산
-        const currentMonth = new Date().getMonth() + 1;
-        const monthlyRevenue = this.consultations
-            .filter(c => {
-                const eventDate = new Date(c['행사일자']);
-                return eventDate.getMonth() + 1 === currentMonth && c['계약상태'] === '확정';
-            })
-            .reduce((sum, c) => sum + (parseFloat(c['총금액']) || 0), 0);
-        
-        document.getElementById('monthlyRevenue').textContent = pricingCalculator.formatPrice(monthlyRevenue);
     }
     
     // 테이블 렌더링
@@ -187,44 +178,71 @@ class PollagrandeApp {
     
     // 이벤트 리스너 초기화
     initEventListeners() {
-        // 상담 추가 버튼
         document.getElementById('addConsultBtn').addEventListener('click', () => {
             this.openNewModal();
         });
         
-        // 저장 버튼
         document.getElementById('saveConsultBtn').addEventListener('click', () => {
             this.saveConsultation();
         });
         
-        // 행사 카테고리 변경
         document.getElementById('eventCategory').addEventListener('change', (e) => {
             this.updateEventSubTypes(e.target.value);
+            this.toggleMealOptions(e.target.value);
         });
         
-        // 행사 유형 변경
-        document.getElementById('eventSubType').addEventListener('change', () => {
+        document.getElementById('eventSubType').addEventListener('change', (e) => {
+            this.updatePriceCalculation();
+            this.toggleCustomMealInput(e.target.value);
+        });
+        
+        document.getElementById('guestCount').addEventListener('input', () => {
             this.updatePriceCalculation();
         });
         
-        // 검색
+        document.getElementById('mealType').addEventListener('change', () => {
+            this.updatePriceCalculation();
+        });
+        
+        document.getElementById('customMealPrice').addEventListener('input', () => {
+            this.updatePriceCalculation();
+        });
+        
+        document.getElementById('promotionAmount').addEventListener('input', () => {
+            this.updatePriceCalculation();
+        });
+        
+        document.getElementById('depositAmount').addEventListener('input', () => {
+            this.calculateBalance();
+        });
+        
         document.getElementById('consultSearch').addEventListener('input', (e) => {
             this.searchConsultations(e.target.value);
         });
         
-        // 통계 카드 클릭
         document.querySelectorAll('.card[onclick]').forEach(card => {
             const onclick = card.getAttribute('onclick');
-            const status = onclick.match(/'([^']+)'/)[1];
-            card.addEventListener('click', () => this.filterByStatus(status));
+            if (onclick) {
+                const match = onclick.match(/'([^']+)'/);
+                if (match) {
+                    const status = match[1];
+                    card.addEventListener('click', () => this.filterByStatus(status));
+                }
+            }
         });
     }
     
     // 새 상담 모달
     openNewModal() {
         this.currentEditId = null;
+        this.selectedOptions = [];
+        this.selectedPartners = [];
         document.getElementById('consultForm').reset();
         document.getElementById('eventSubType').disabled = true;
+        document.getElementById('mealOptions').style.display = 'none';
+        document.getElementById('customMealSection').style.display = 'none';
+        this.renderOptionsCheckboxes();
+        this.renderPartnersCheckboxes();
         const modal = new bootstrap.Modal(document.getElementById('consultModal'));
         modal.show();
     }
@@ -235,8 +253,9 @@ class PollagrandeApp {
         if (!consultation) return;
         
         this.currentEditId = id;
+        this.selectedOptions = [];
+        this.selectedPartners = [];
         
-        // 폼 채우기
         document.getElementById('customerName').value = consultation['고객명'];
         document.getElementById('customerPhone').value = consultation['연락처'];
         document.getElementById('eventDate').value = consultation['행사일자'];
@@ -245,7 +264,9 @@ class PollagrandeApp {
         document.getElementById('eventCategory').value = consultation['행사카테고리'];
         
         this.updateEventSubTypes(consultation['행사카테고리']);
+        this.toggleMealOptions(consultation['행사카테고리']);
         document.getElementById('eventSubType').value = consultation['행사유형'];
+        this.toggleCustomMealInput(consultation['행사유형']);
         
         document.getElementById('promotion').value = consultation['프로모션'] || '';
         document.getElementById('promotionAmount').value = consultation['프로모션금액'] || 0;
@@ -254,6 +275,8 @@ class PollagrandeApp {
         document.getElementById('paymentMethod').value = consultation['지급방식'] || '현금';
         document.getElementById('consultMemo').value = consultation['특이사항'] || '';
         
+        this.renderOptionsCheckboxes();
+        this.renderPartnersCheckboxes();
         this.updatePriceCalculation();
         
         const modal = new bootstrap.Modal(document.getElementById('consultModal'));
@@ -276,38 +299,149 @@ class PollagrandeApp {
         }
     }
     
+    // 식사 옵션 토글
+    toggleMealOptions(category) {
+        const mealOptions = document.getElementById('mealOptions');
+        if (category === '행사') {
+            mealOptions.style.display = 'block';
+        } else {
+            mealOptions.style.display = 'none';
+        }
+    }
+    
+    // 커스텀 식대 입력 토글
+    toggleCustomMealInput(subType) {
+        const customSection = document.getElementById('customMealSection');
+        if (subType === '기업행사' || subType === '대관') {
+            customSection.style.display = 'block';
+        } else {
+            customSection.style.display = 'none';
+        }
+    }
+    
+    // 옵션 체크박스 렌더링
+    renderOptionsCheckboxes() {
+        const container = document.getElementById('optionsCheckboxes');
+        container.innerHTML = '';
+        
+        Object.keys(CONFIG.OPTIONS).forEach(optionName => {
+            const div = document.createElement('div');
+            div.className = 'form-check mb-2';
+            div.innerHTML = `
+                <input class="form-check-input option-checkbox" type="checkbox" value="${optionName}" id="opt_${optionName}">
+                <label class="form-check-label" for="opt_${optionName}">
+                    ${optionName} (${pricingCalculator.formatPrice(CONFIG.OPTIONS[optionName])})
+                </label>
+            `;
+            container.appendChild(div);
+        });
+        
+        const customDiv = document.createElement('div');
+        customDiv.className = 'form-check mb-2';
+        customDiv.innerHTML = `
+            <input class="form-check-input option-checkbox" type="checkbox" value="기타옵션" id="opt_기타옵션">
+            <label class="form-check-label" for="opt_기타옵션">기타옵션 (직접입력)</label>
+        `;
+        container.appendChild(customDiv);
+        
+        const customInputDiv = document.createElement('div');
+        customInputDiv.id = 'customOptionInput';
+        customInputDiv.style.display = 'none';
+        customInputDiv.className = 'ms-4 mt-2';
+        customInputDiv.innerHTML = `
+            <input type="text" class="form-control mb-2" id="customOptionName" placeholder="옵션 내용">
+            <input type="number" class="form-control" id="customOptionPrice" placeholder="금액" min="0">
+        `;
+        container.appendChild(customInputDiv);
+        
+        document.querySelectorAll('.option-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                if (checkbox.value === '기타옵션') {
+                    document.getElementById('customOptionInput').style.display = checkbox.checked ? 'block' : 'none';
+                }
+                this.updatePriceCalculation();
+            });
+        });
+        
+        document.getElementById('customOptionPrice')?.addEventListener('input', () => {
+            this.updatePriceCalculation();
+        });
+    }
+    
+    // 협력업체 체크박스 렌더링
+    renderPartnersCheckboxes() {
+        const container = document.getElementById('partnersCheckboxes');
+        container.innerHTML = '';
+        
+        CONFIG.PARTNERS.forEach(partnerName => {
+            const div = document.createElement('div');
+            div.className = 'mb-2';
+            div.innerHTML = `
+                <div class="form-check">
+                    <input class="form-check-input partner-checkbox" type="checkbox" value="${partnerName}" id="partner_${partnerName}">
+                    <label class="form-check-label" for="partner_${partnerName}">${partnerName}</label>
+                </div>
+                <input type="text" class="form-control ms-4 mt-1" id="partner_detail_${partnerName}" placeholder="내용 입력" style="display:none;">
+            `;
+            container.appendChild(div);
+        });
+        
+        document.querySelectorAll('.partner-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const detailInput = document.getElementById(`partner_detail_${e.target.value}`);
+                detailInput.style.display = e.target.checked ? 'block' : 'none';
+            });
+        });
+    }
+    
     // 가격 계산 업데이트
     updatePriceCalculation() {
+        const eventCategory = document.getElementById('eventCategory').value;
         const eventSubType = document.getElementById('eventSubType').value;
         const guestCount = parseInt(document.getElementById('guestCount').value) || 0;
         const promotionAmount = parseInt(document.getElementById('promotionAmount').value) || 0;
         
-        // 기본 금액
+        if (!eventSubType) return;
+        
         const basePrice = pricingCalculator.calculateBasePrice(eventSubType);
         
-        // 추가 식대 (간단히 0으로 설정, 필요시 수정)
-        const mealPrice = 0;
+        let mealPrice = 0;
+        if (eventCategory === '웨딩') {
+            mealPrice = pricingCalculator.calculateWeddingMealPrice(guestCount);
+        } else if (eventCategory === '행사') {
+            if (eventSubType === '기업행사' || eventSubType === '대관') {
+                const customPrice = parseInt(document.getElementById('customMealPrice').value) || 0;
+                mealPrice = pricingCalculator.calculateEventMealPrice(guestCount, null, customPrice);
+            } else {
+                const mealType = document.getElementById('mealType').value;
+                mealPrice = pricingCalculator.calculateEventMealPrice(guestCount, mealType, 0);
+            }
+        }
         
-        // 옵션 (간단히 0으로 설정, 필요시 체크박스 추가)
-        const optionPrice = 0;
+        this.selectedOptions = [];
+        document.querySelectorAll('.option-checkbox:checked').forEach(checkbox => {
+            if (checkbox.value === '기타옵션') {
+                const customPrice = parseInt(document.getElementById('customOptionPrice').value) || 0;
+                this.selectedOptions.push({ type: '기타옵션', customPrice: customPrice });
+            } else {
+                this.selectedOptions.push({ type: checkbox.value });
+            }
+        });
         
-        // 프로모션
+        const optionPrice = pricingCalculator.calculateOptionPrice(this.selectedOptions);
         pricingCalculator.applyPromotion(promotionAmount);
         
-        // 총액
         pricingCalculator.basePrice = basePrice;
         pricingCalculator.mealPrice = mealPrice;
         pricingCalculator.optionPrice = optionPrice;
         const totalPrice = pricingCalculator.calculateTotal();
         
-        // UI 업데이트
         document.getElementById('basePrice').textContent = pricingCalculator.formatPrice(basePrice);
         document.getElementById('additionalMealPrice').textContent = pricingCalculator.formatPrice(mealPrice);
         document.getElementById('optionsPrice').textContent = pricingCalculator.formatPrice(optionPrice);
         document.getElementById('promotionPrice').textContent = '-' + pricingCalculator.formatPrice(promotionAmount);
         document.getElementById('totalPrice').textContent = pricingCalculator.formatPrice(totalPrice);
         
-        // 잔금 계산
         this.calculateBalance();
     }
     
@@ -322,6 +456,22 @@ class PollagrandeApp {
     
     // 상담 저장
     async saveConsultation() {
+        this.selectedPartners = [];
+        document.querySelectorAll('.partner-checkbox:checked').forEach(checkbox => {
+            const detail = document.getElementById(`partner_detail_${checkbox.value}`).value;
+            this.selectedPartners.push({ name: checkbox.value, detail: detail });
+        });
+        
+        const optionsText = this.selectedOptions.map(opt => {
+            if (opt.type === '기타옵션') {
+                const name = document.getElementById('customOptionName').value;
+                return `${name} (${pricingCalculator.formatPrice(opt.customPrice)})`;
+            }
+            return `${opt.type} (${pricingCalculator.formatPrice(CONFIG.OPTIONS[opt.type])})`;
+        }).join(', ') || '없음';
+        
+        const partnersText = this.selectedPartners.map(p => `${p.name}: ${p.detail}`).join(', ') || '없음';
+        
         const formData = {
             customerName: document.getElementById('customerName').value,
             customerPhone: document.getElementById('customerPhone').value,
@@ -343,7 +493,7 @@ class PollagrandeApp {
             ),
             paymentMethod: document.getElementById('paymentMethod').value,
             contractStatus: document.getElementById('contractStatus').value,
-            memo: document.getElementById('consultMemo').value
+            memo: `옵션: ${optionsText} | 협력업체: ${partnersText} | ${document.getElementById('consultMemo').value}`
         };
         
         try {
@@ -355,11 +505,9 @@ class PollagrandeApp {
                 alert('저장되었습니다.');
             }
             
-            // 모달 닫기
             const modal = bootstrap.Modal.getInstance(document.getElementById('consultModal'));
             modal.hide();
             
-            // 데이터 새로고침
             await this.loadData();
             this.calendar.removeAllEvents();
             this.calendar.addEventSource(this.getCalendarEvents());
@@ -394,6 +542,16 @@ class PollagrandeApp {
         const consultation = this.consultations.find(c => c.ID === id);
         if (!consultation) return;
         
+        const optionsText = this.selectedOptions.map(opt => {
+            if (opt.type === '기타옵션') {
+                const name = document.getElementById('customOptionName')?.value || '기타';
+                return `${name} (${pricingCalculator.formatPrice(opt.customPrice)})`;
+            }
+            return `${opt.type} (${pricingCalculator.formatPrice(CONFIG.OPTIONS[opt.type])})`;
+        }).join(', ') || '없음';
+        
+        const partnersText = this.selectedPartners.map(p => `${p.name}: ${p.detail}`).join(' / ') || '없음';
+        
         const params = new URLSearchParams({
             customerName: consultation['고객명'],
             customerPhone: consultation['연락처'],
@@ -410,7 +568,8 @@ class PollagrandeApp {
             totalPrice: consultation['총금액'],
             depositAmount: consultation['계약금'],
             balanceAmount: consultation['잔금'],
-            options: '없음'
+            options: optionsText,
+            partners: partnersText
         });
         
         window.open('print.html?' + params.toString(), '_blank');
@@ -418,7 +577,7 @@ class PollagrandeApp {
     
     // 계약서 인쇄
     printContract(id) {
-        this.printConsultation(id); // 같은 페이지 사용
+        this.printConsultation(id);
     }
     
     // 검색

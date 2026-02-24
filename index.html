@@ -11,14 +11,13 @@
         :root {
             --primary-color: #8B4513;
             --secondary-color: #D2691E;
-            --success-color: #28a745;
-            --warning-color: #ffc107;
-            --danger-color: #dc3545;
+            --beige-light: #F5F5DC;
+            --beige-medium: #EDD9C0;
         }
         
         body {
-            font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f8f9fa;
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--beige-light);
         }
         
         .navbar {
@@ -33,7 +32,7 @@
         }
         
         .main-container {
-            padding: 30px 20px;
+            padding: 20px 15px;
             max-width: 1400px;
             margin: 0 auto;
         }
@@ -44,10 +43,11 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.07);
             margin-bottom: 20px;
             transition: transform 0.2s;
+            background: white;
         }
         
         .card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-3px);
             box-shadow: 0 6px 12px rgba(0,0,0,0.1);
         }
         
@@ -56,7 +56,7 @@
             color: white;
             font-weight: 600;
             border-radius: 15px 15px 0 0 !important;
-            padding: 15px 20px;
+            padding: 12px 20px;
         }
         
         .btn-primary {
@@ -73,7 +73,7 @@
         
         #calendar {
             background: white;
-            padding: 20px;
+            padding: 15px;
             border-radius: 15px;
         }
         
@@ -122,6 +122,39 @@
         .stat-card:hover {
             transform: scale(1.05);
         }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 15px 10px;
+            }
+            
+            .card {
+                margin-bottom: 15px;
+            }
+            
+            .navbar-brand {
+                font-size: 1.2rem;
+            }
+            
+            .table {
+                font-size: 0.85rem;
+            }
+            
+            .btn-sm {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.75rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .modal-dialog {
+                margin: 0.5rem;
+            }
+            
+            .modal-xl {
+                max-width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -140,47 +173,31 @@
     <!-- 메인 컨테이너 -->
     <div class="main-container">
         <!-- 상단 통계 카드 -->
-        <div class="row mb-4">
-            <div class="col-md-4">
+        <div class="row mb-3">
+            <div class="col-md-4 col-sm-6 mb-3">
                 <div class="card text-center stat-card" onclick="app.filterByStatus('기본상담')">
                     <div class="card-body">
                         <h3 class="text-info"><i class="bi bi-heart"></i></h3>
                         <h4 id="hopeCount">0</h4>
                         <p class="text-muted mb-0">기본상담</p>
-                        <small class="text-primary"><i class="bi bi-hand-index"></i> 클릭하여 목록 보기</small>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4 col-sm-6 mb-3">
                 <div class="card text-center stat-card" onclick="app.filterByStatus('방문상담')">
                     <div class="card-body">
                         <h3 class="text-warning"><i class="bi bi-calendar-check"></i></h3>
                         <h4 id="visitCount">0</h4>
                         <p class="text-muted mb-0">방문상담</p>
-                        <small class="text-primary"><i class="bi bi-hand-index"></i> 클릭하여 목록 보기</small>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4 col-sm-12 mb-3">
                 <div class="card text-center stat-card" onclick="app.filterByStatus('확정')">
                     <div class="card-body">
                         <h3 class="text-danger"><i class="bi bi-check-circle"></i></h3>
                         <h4 id="confirmedCount">0</h4>
                         <p class="text-muted mb-0">확정계약</p>
-                        <small class="text-primary"><i class="bi bi-hand-index"></i> 클릭하여 목록 보기</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 매출 카드 -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h3 class="text-success"><i class="bi bi-cash-stack"></i></h3>
-                        <h4 id="monthlyRevenue">₩0</h4>
-                        <p class="text-muted mb-0">이번 달 매출</p>
                     </div>
                 </div>
             </div>
@@ -188,7 +205,7 @@
 
         <!-- 캘린더와 예약 리스트 -->
         <div class="row">
-            <div class="col-lg-8">
+            <div class="col-lg-8 mb-3">
                 <div class="card">
                     <div class="card-header">
                         <i class="bi bi-calendar3"></i> 예약 캘린더
@@ -199,25 +216,23 @@
                 </div>
             </div>
             
-            <div class="col-lg-4">
+            <div class="col-lg-4 mb-3">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span><i class="bi bi-list-check"></i> 다가오는 행사</span>
                         <button class="btn btn-sm btn-light" id="addConsultBtn">
-                            <i class="bi bi-plus-circle"></i> 상담 추가
+                            <i class="bi bi-plus-circle"></i> 추가
                         </button>
                     </div>
                     <div class="card-body" style="max-height: 500px; overflow-y: auto;">
-                        <div class="list-group" id="upcomingEvents">
-                            <!-- 동적으로 생성될 예정 -->
-                        </div>
+                        <div class="list-group" id="upcomingEvents"></div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- 탭 메뉴 -->
-        <div class="row mt-4">
+        <div class="row mt-3">
             <div class="col-12">
                 <div class="card">
                     <ul class="nav nav-tabs card-header" id="mainTabs" role="tablist">
@@ -238,7 +253,7 @@
                             <div class="mb-3">
                                 <input type="text" class="form-control" placeholder="고객명, 연락처로 검색..." id="consultSearch">
                             </div>
-                            <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+                            <div class="table-responsive">
                                 <table class="table table-hover">
                                     <thead class="table-light">
                                         <tr>
@@ -251,9 +266,7 @@
                                             <th>작업</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="consultTable">
-                                        <!-- 동적으로 생성될 예정 -->
-                                    </tbody>
+                                    <tbody id="consultTable"></tbody>
                                 </table>
                             </div>
                         </div>
@@ -272,9 +285,7 @@
                                             <th>작업</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="contractTable">
-                                        <!-- 동적으로 생성될 예정 -->
-                                    </tbody>
+                                    <tbody id="contractTable"></tbody>
                                 </table>
                             </div>
                         </div>
@@ -309,7 +320,7 @@
                             </div>
                             
                             <!-- 행사 정보 -->
-                            <div class="col-12 mb-3 mt-3">
+                            <div class="col-12 mb-3 mt-2">
                                 <h6 class="border-bottom pb-2"><i class="bi bi-calendar-event"></i> 행사 정보</h6>
                             </div>
                             <div class="col-md-4 mb-3">
@@ -331,7 +342,7 @@
                             </div>
                             
                             <!-- 행사 유형 -->
-                            <div class="col-12 mb-3 mt-3">
+                            <div class="col-12 mb-3 mt-2">
                                 <h6 class="border-bottom pb-2"><i class="bi bi-grid"></i> 행사 유형</h6>
                             </div>
                             <div class="col-md-6 mb-3">
@@ -349,12 +360,53 @@
                                 </select>
                             </div>
                             
+                            <!-- 식사 옵션 (행사만) -->
+                            <div class="col-12" id="mealOptions" style="display: none;">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">식사 유형</label>
+                                        <select class="form-select" id="mealType">
+                                            <option value="western">양식 (55,000원)</option>
+                                            <option value="korean">한식 (59,000원)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12" id="customMealSection" style="display: none;">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">음식 항목</label>
+                                                <input type="text" class="form-control" id="customMealName" placeholder="예: 뷔페">
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">1인 식대 (₩)</label>
+                                                <input type="number" class="form-control" id="customMealPrice" placeholder="0" min="0">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 선택 옵션 -->
+                            <div class="col-12 mb-3 mt-2">
+                                <h6 class="border-bottom pb-2"><i class="bi bi-check2-square"></i> 선택 옵션</h6>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <div id="optionsCheckboxes"></div>
+                            </div>
+                            
+                            <!-- 협력업체 -->
+                            <div class="col-12 mb-3 mt-2">
+                                <h6 class="border-bottom pb-2"><i class="bi bi-people"></i> 협력업체 (금액 계산 제외)</h6>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <div id="partnersCheckboxes"></div>
+                            </div>
+                            
                             <!-- 금액 요약 -->
-                            <div class="col-12 mb-3 mt-3">
+                            <div class="col-12 mb-3 mt-2">
                                 <h6 class="border-bottom pb-2"><i class="bi bi-calculator"></i> 금액 요약</h6>
                             </div>
                             <div class="col-12 mb-3">
-                                <div class="card bg-light">
+                                <div class="card" style="background: var(--beige-light);">
                                     <div class="card-body">
                                         <div class="row">
                                             <div class="col-6">
@@ -379,7 +431,7 @@
                             </div>
                             
                             <!-- 프로모션 -->
-                            <div class="col-12 mb-3 mt-3">
+                            <div class="col-12 mb-3 mt-2">
                                 <h6 class="border-bottom pb-2"><i class="bi bi-tag"></i> 프로모션</h6>
                             </div>
                             <div class="col-md-6 mb-3">
@@ -388,11 +440,11 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">할인 금액 (₩)</label>
-                                <input type="number" class="form-control" id="promotionAmount" placeholder="0" onchange="app.updatePriceCalculation()">
+                                <input type="number" class="form-control" id="promotionAmount" placeholder="0">
                             </div>
                             
                             <!-- 계약 정보 -->
-                            <div class="col-12 mb-3 mt-3">
+                            <div class="col-12 mb-3 mt-2">
                                 <h6 class="border-bottom pb-2"><i class="bi bi-file-text"></i> 계약 정보</h6>
                             </div>
                             <div class="col-md-6 mb-3">
@@ -405,7 +457,7 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">계약금 (₩)</label>
-                                <input type="number" class="form-control" id="depositAmount" placeholder="0" min="0" onchange="app.calculateBalance()">
+                                <input type="number" class="form-control" id="depositAmount" placeholder="0" min="0">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">지급 방식</label>
@@ -417,7 +469,7 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">잔금 (₩)</label>
-                                <input type="text" class="form-control" id="balanceAmount" readonly style="background-color: #f8f9fa; font-weight: bold; color: #0d6efd;">
+                                <input type="text" class="form-control" id="balanceAmount" readonly style="background-color: var(--beige-light); font-weight: bold; color: #0d6efd;">
                             </div>
                             <div class="col-12 mb-3">
                                 <label class="form-label">특이사항</label>
